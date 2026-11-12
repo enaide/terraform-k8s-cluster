@@ -10,7 +10,7 @@ K8S_VERSION="${k8s_version}"
 
 # CORRECCIÓN: validar que la variable no está vacía antes de usarla
 if [ -z "$K8S_VERSION" ]; then
-  echo "[05-kubernetes] ERROR: K8S_VERSION está vacía — revisar terraform.tfvars"
+  echo "[05-kubernetes] ERROR: K8S_VERSION está vacía — revisar terraform.tfvars" >&2
   exit 1
 fi
 echo "[05-kubernetes] Iniciando con versión: $K8S_VERSION"
@@ -27,7 +27,7 @@ echo "[05-kubernetes] Repositorio configurado"
 
 # Verificar que el repo es alcanzable antes de intentar instalar
 if ! dnf repolist | grep -q "kubernetes"; then
-  echo "[05-kubernetes] ERROR: repositorio kubernetes no disponible"
+  echo "[05-kubernetes] ERROR: repositorio kubernetes no disponible" >&2
   dnf repolist
   exit 1
 fi
@@ -43,12 +43,10 @@ echo "[05-kubernetes] kubelet habilitado (kubeadm lo iniciará en su momento)"
 for bin in kubelet kubeadm kubectl; do
   BIN_PATH=$(command -v "$bin" 2>/dev/null || true)
   if [ -z "$BIN_PATH" ]; then
-    echo "[05-kubernetes] ERROR: '$bin' no encontrado en PATH"
+    echo "[05-kubernetes] ERROR: '$bin' no encontrado en PATH" >&2
     exit 1
   fi
-  BIN_VERSION=$("$bin" version --client --short 2>/dev/null \
-    || "$bin" version 2>/dev/null | head -1 \
-    || echo "versión no determinada")
+  BIN_VERSION=$("$bin" version --client --short 2>/dev/null || "$bin" version 2>/dev/null | head -1 || echo "versión no determinada")
   echo "[05-kubernetes] $bin → $BIN_PATH ($BIN_VERSION)"
 done
 

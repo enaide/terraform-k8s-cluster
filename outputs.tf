@@ -23,8 +23,14 @@ output "ssh_control_plane" {
   description = "Comando SSH directo al control-plane"
 }
 
+output "wait_for_cluster" {
+  description = "El cluster fue validado automáticamente al final del apply"
+  value       = "✅ Cluster validado — ${var.env_prefix} · ${var.aws_region}"
+  depends_on  = [null_resource.wait_for_cluster]
+}
+
 output "watch_init_log" {
-  value       = "ssh -i /home/enaide/.ssh/id_ed25519 ec2-user@${aws_instance.control_plane.public_ip} 'tail -f /var/log/k8s-init.log'"
+  value = "ssh -i ${var.public_key_location} ec2-user@${aws_instance.control_plane.public_ip} 'tail -f /var/log/k8s-init/init.log'"
   description = "Monitorear progreso de kubeadm init en tiempo real"
 }
 

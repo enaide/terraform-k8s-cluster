@@ -36,13 +36,41 @@ resource "aws_iam_role_policy" "ssm-param-policy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:PutParameter",
+          "ssm:GetParameter",
+          "ssm:GetParameters"
+        ]
+        Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/${var.env_prefix}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeVolumes",
+          "ec2:DescribeVolumesModifications"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "s3-scripts-policy" {
+  name = "${var.env_prefix}-s3-scripts-policy"
+  role = aws_iam_role.k8s-ssm-role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
     Statement = [{
-      Effect = "Allow"
-      Action = [
-        "ssm:PutParameter",
-        "ssm:GetParameter"
+      Effect   = "Allow"
+      Action   = ["s3:GetObject", "s3:ListBucket"]
+      Resource = [
+        aws_s3_bucket.k8s-scripts.arn,
+        "${aws_s3_bucket.k8s-scripts.arn}/*"
       ]
-      Resource = "arn:aws:ssm:${var.aws_region}:*:parameter/${var.env_prefix}/*"
     }]
   })
 }
@@ -52,16 +80,9 @@ resource "aws_iam_instance_profile" "k8s-profile" {
   role = aws_iam_role.k8s-ssm-role.name
 }
 
-# ── LOCALS: leer scripts desde disco ─────────────────────────────────────────
-# Cada script se lee una vez aquí y se pasa al template del orquestador.
-# Si un archivo no existe, Terraform falla en plan (antes del apply).
 locals {
-  script_01_swap      = file("${path.module}/scripts/common/01-swap.sh")
-  script_02_modules   = file("${path.module}/scripts/common/02-kernel-modules.sh")
-  script_03_sysctl    = file("${path.module}/scripts/common/03-sysctl.sh")
-  script_04_containerd = file("${path.module}/scripts/common/04-containerd.sh")
-
-  # 05 y 06 necesitan variables, así que usan templatefile()
+  # Solo lo que necesita templatefile() — los 4 scripts file() puro
+  # se mueven a file() directo en s3_scripts.tf
   script_05_kubernetes = templatefile("${path.module}/scripts/common/05-kubernetes.sh", {
     k8s_version = var.k8s_version
   })
@@ -103,29 +124,34 @@ resource "aws_instance" "control_plane" {
   }
 
   root_block_device {
-    volume_size           = one(data.aws_ami.amazon_linux_2023.block_device_mappings).ebs.volume_size
+    volume_size           = 30
     volume_type           = "gp3"
     delete_on_termination = true
   }
 
-  # El orquestador recibe el contenido de cada script como variable
-  # y los escribe en disco antes de ejecutarlos en orden
-/*   user_data = templatefile("${path.module}/scripts/init.sh.tpl", {
-    node_role          = "control-plane"
-    script_01_swap     = local.script_01_swap
-    script_02_modules  = local.script_02_modules
-    script_03_sysctl   = local.script_03_sysctl
-    script_04_containerd = local.script_04_containerd
-    script_05_kubernetes = local.script_05_kubernetes
-    script_06_role     = local.script_06_control_plane
-  }) */
+  user_data = templatefile("${path.module}/scripts/bootstrap.sh.tpl", {
+    bucket    = aws_s3_bucket.k8s-scripts.id
+    region    = var.aws_region
+    node_role = "control-plane"
+  })
+  
+  # ← AÑADIDO: garantiza que TODOS los scripts están en S3 antes de lanzar la EC2
+  depends_on = [
+    aws_s3_object.script_01_swap,
+    aws_s3_object.script_02_modules,
+    aws_s3_object.script_03_sysctl,
+    aws_s3_object.script_04_containerd,
+    aws_s3_object.script_05_kubernetes,
+    aws_s3_object.script_06_control_plane,
+    aws_s3_object.init_orchestrator
+  ]
 
   tags = { Name = "${var.env_prefix}-control-plane" }
 }
 
 # ── WORKERS ───────────────────────────────────────────────────────────────────
 resource "aws_instance" "worker" {
-  count = 2
+  count = 1
 
   ami                         = data.aws_ami.amazon_linux_2023.id
   instance_type               = var.instance_type
@@ -145,58 +171,49 @@ resource "aws_instance" "worker" {
   }
 
   root_block_device {
-    volume_size           = one(data.aws_ami.amazon_linux_2023.block_device_mappings).ebs.volume_size
+    volume_size           = 30
     volume_type           = "gp3"
     delete_on_termination = true
   }
 
-/*   user_data = templatefile("${path.module}/scripts/init.sh.tpl", {
-    node_role            = "worker"
-    script_01_swap       = local.script_01_swap
-    script_02_modules    = local.script_02_modules
-    script_03_sysctl     = local.script_03_sysctl
-    script_04_containerd = local.script_04_containerd
-    script_05_kubernetes = local.script_05_kubernetes
-    script_06_role       = local.script_06_worker
-  }) */
-
-  depends_on = [aws_instance.control_plane]
-
+  user_data = templatefile("${path.module}/scripts/bootstrap.sh.tpl", {
+    bucket    = aws_s3_bucket.k8s-scripts.id
+    region    = var.aws_region
+    node_role = "worker"
+  })
+  
+  # ← AÑADIDO: scripts en S3 + control plane listo antes de lanzar workers
+  depends_on = [
+    aws_instance.control_plane,
+    aws_s3_object.script_01_swap,
+    aws_s3_object.script_02_modules,
+    aws_s3_object.script_03_sysctl,
+    aws_s3_object.script_04_containerd,
+    aws_s3_object.script_05_kubernetes,
+    aws_s3_object.script_06_worker,
+    aws_s3_object.init_orchestrator
+  ]
+  
   tags = { Name = "${var.env_prefix}-worker-${count.index + 1}" }
 }
 
 # ── LIMPIEZA SSM al destruir ───────────────────────────────────────────────────
+resource "aws_ssm_parameter" "control_plane_ready" {
+  name  = "/${var.env_prefix}/cp-ready"
+  type  = "String"
+  value = "false"
 
-# En vez de null_resource, usar aws_ssm_parameter
-# y que el user_data los lea, no los escriba
-/* resource "aws_ssm_parameter" "join_command" {
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "join_command" {
   name  = "/${var.env_prefix}/join-command"
   type  = "SecureString"
-  value = "placeholder"   # sobrescrito por el control plane
-  
+  value = "dummy-value"
+
   lifecycle {
-    ignore_changes = [value]  # Terraform no sobreescribe lo que escribe kubeadm
+    ignore_changes = [value]
   }
-} */
-
-resource "null_resource" "cleanup_ssm" {
-  triggers = {
-    region     = var.aws_region
-    env_prefix = var.env_prefix
-  }
-
-  provisioner "local-exec" {
-    when    = destroy
-    command = <<-CMD
-      aws ssm delete-parameter \
-        --name "/${self.triggers.env_prefix}/join-command" \
-        --region ${self.triggers.region} 2>/dev/null || true
-
-      aws ssm delete-parameter \
-        --name "/${self.triggers.env_prefix}/control-plane-ready" \
-        --region ${self.triggers.region} 2>/dev/null || true
-    CMD
-  }
-
-  depends_on = [aws_instance.control_plane, aws_instance.worker]
 }

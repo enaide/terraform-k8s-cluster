@@ -51,6 +51,13 @@ variable "public_key_location" {
   type        = string
   default     = "/home/enaide/.ssh/id_ed25519.pub"
 }
+
+variable "private_key_location" {
+  description = "Ruta local a tu clave privada SSH"
+  type        = string
+  default     = "/home/enaide/.ssh/id_ed25519"
+}
+
 variable image_name {
   description = "imagen linux"
   type        = string
