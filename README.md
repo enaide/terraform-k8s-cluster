@@ -1,4 +1,4 @@
-# terraform-bootcamp
+# terraform-practice
 
 > Clúster Kubernetes (kubeadm) de 3 nodos en AWS (1 control-plane y 2 workers en EC2 Spot sobre Amazon Linux 2023), desplegado con Terraform: bootstrap por S3, coordinación de nodos por SSM Parameter Store y validación automática del clúster al final del `terraform apply`.
 
