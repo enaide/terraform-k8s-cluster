@@ -69,5 +69,5 @@ resource "aws_s3_object" "init_orchestrator" {
   bucket  = aws_s3_bucket.k8s-scripts.id
   key     = "init.sh"
   content = file("${path.module}/scripts/init.sh")
-  etag    = filemd5("${path.module}/scripts/init.sh")     # ← filemd5()
+  etag    = filemd5("${path.module}/scripts/init.sh") # ← filemd5()
 }

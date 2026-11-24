@@ -49,7 +49,7 @@ done
 
 # ── kubeadm init ───────────────────────────────────────────────────────────
 echo "[06-kubeadm-init] Ejecutando kubeadm init..."
-kubeadm init --pod-network-cidr="$POD_CIDR" --node-name="$(hostname -s)" \
+kubeadm init --pod-network-cidr="$POD_CIDR" --node-name="$NODE_NAME" \
   --apiserver-advertise-address="$PRIVATE_IP" \
   --apiserver-cert-extra-sans="$PUBLIC_IP"
 echo "[06-kubeadm-init] kubeadm init completado"
@@ -96,7 +96,7 @@ spec:
     ipPools:
     - blockSize: 26
       cidr: ${pod_network_cidr}
-      encapsulation: VXLANCrossSubnet
+      encapsulation: VXLAN
       natOutgoing: Enabled
       nodeSelector: all()
 EOF

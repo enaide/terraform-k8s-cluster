@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.6"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -12,9 +12,9 @@ terraform {
     }
   }
   backend "s3" {
-    bucket = "devops-myapp-bucket"
-    key = "myapp/state.tfstate"
-    region = "eu-south-2"
+    bucket  = "devops-myapp-bucket"
+    key     = "myapp/state.tfstate"
+    region  = "eu-south-2"
     profile = "dev"
   }
 }

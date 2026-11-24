@@ -1,5 +1,6 @@
 provider "aws" {
-  profile = "dev"
+  profile = var.aws_profile
+  region  = var.aws_region # además corrige el riesgo de región que vimos
 }
 
 resource "aws_vpc" "k8s-vpc" {

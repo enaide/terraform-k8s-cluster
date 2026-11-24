@@ -72,7 +72,7 @@ done
 
 # Ejecutar kubeadm join
 echo "[06-kubeadm-join] Ejecutando kubeadm join..."
-$JOIN_CMD
+$JOIN_CMD --node-name "$NODE_NAME"
 
 echo "[06-kubeadm-join] $(hostname -s) unido al clúster correctamente"
 echo "[06-kubeadm-join] OK"

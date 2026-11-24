@@ -151,12 +151,12 @@ resource "aws_vpc_security_group_ingress_rule" "calico_vxlan_worker" {
 resource "aws_vpc_security_group_ingress_rule" "calico_vxlan_cp_self" {
   security_group_id            = aws_security_group.k8s-sg-control-plane.id # DESTINO: Control Plane
   referenced_security_group_id = aws_security_group.k8s-sg-control-plane.id # ORIGEN: Control Plane
-  
-  ip_protocol                  = "udp"
-  from_port                    = 4789
-  to_port                      = 4789
-  description                  = "Calico VXLAN overlay entre nodos del Control Plane"
-  tags                         = { Name = "${var.env_prefix}-cp-to-cp-vxlan" }
+
+  ip_protocol = "udp"
+  from_port   = 4789
+  to_port     = 4789
+  description = "Calico VXLAN overlay entre nodos del Control Plane"
+  tags        = { Name = "${var.env_prefix}-cp-to-cp-vxlan" }
 }
 
 # Permitir VXLAN entre workers mismos

@@ -1,3 +1,19 @@
+variable "cp_instance_type" {
+  description = "Tipo EC2 del control plane (mín. 2 vCPU / 2 GB; debe ser elegible para Free Tier en esta cuenta)"
+  type        = string
+  default     = "c7i-flex.large"
+}
+
+variable "worker_instance_type" {
+  description = "Tipo EC2 de los workers (mín. 2 GB RAM)"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "root_volume_size" {
+  description = "Tamaño del disco raíz en GB (mínimo: el snapshot de la AMI, 8 GB en AL2023)"
+  type        = number
+}
 
 variable "subnet_cidr_block" {
   description = "CIDR de la subnet pública"
@@ -6,6 +22,12 @@ variable "subnet_cidr_block" {
 variable "vpc_cidr_block" {
   description = "CIDR de la VPC"
   type        = string
+}
+
+variable "aws_profile" {
+  description = "Perfil de la AWS CLI"
+  type        = string
+  default     = "dev"
 }
 
 variable "env_prefix" {
@@ -22,11 +44,11 @@ variable "aws_region" {
   type        = string
 }
 
-variable "instance_type" {
-  description = "Tipo de instancia EC2 (mín. 2 CPU / 2 GB RAM para K8s)"
-  type        = string
-  # default     = "c7i-flex.large"
-}
+# variable "instance_type" {
+#   description = "Tipo de instancia EC2 (mín. 2 CPU / 2 GB RAM para K8s)"
+#   type        = string
+#   # default     = "c7i-flex.large"
+# }
 
 variable "spot_max_price" {
   description = "Precio máximo Spot en USD/hora por instancia"
@@ -58,12 +80,12 @@ variable "private_key_location" {
   default     = "/home/enaide/.ssh/id_ed25519"
 }
 
-variable image_name {
+variable "image_name" {
   description = "imagen linux"
   type        = string
   # default     = "al2023-ami-2023.*-kernel-6.18-x86_64"
 }
-variable owner {
+variable "owner" {
   description = "numero | nombre del proovedor de la imagen linux"
   type        = string
   # default     = "amazon"    
