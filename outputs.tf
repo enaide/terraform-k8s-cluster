@@ -15,11 +15,11 @@ output "worker_public_ips" {
 
 output "worker_private_ips" {
   value       = aws_instance.worker[*].private_ip
-  description = "IPs públicas de los workers"
+  description = "IPs privadas de los workers"
 }
 
 output "ssh_control_plane" {
-  value       = "ssh -i /home/enaide/.ssh/id_ed25519 ec2-user@${aws_instance.control_plane.public_ip}"
+  value       = "ssh -i ${var.private_key_location} ec2-user@${aws_instance.control_plane.public_ip}"
   description = "Comando SSH directo al control-plane"
 }
 
@@ -35,6 +35,15 @@ output "watch_init_log" {
 }
 
 output "estimated_cost_per_hour" {
-  value       = "~$0.081 USD/hr total (3 nodos Spot c7i-flex.large)"
-  description = "Costo estimado del clúster completo"
+  # Se calcula a partir de la configuración real. El precio Spot varía; aquí
+  # se muestra el tope: spot_max_price × número de nodos.
+  value = format(
+    "Spot: 1× %s + %d× %s · tope máx. $%.3f USD/h (%s USD/h por nodo)",
+    var.cp_instance_type,
+    length(aws_instance.worker),
+    var.worker_instance_type,
+    tonumber(var.spot_max_price) * local.expected_nodes,
+    var.spot_max_price,
+  )
+  description = "Coste máximo por hora del clúster (el precio Spot real suele ser menor)"
 }

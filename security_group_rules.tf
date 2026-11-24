@@ -34,12 +34,15 @@ resource "aws_vpc_security_group_ingress_rule" "cp_ssh" {
 # Acceso al API Server: Restringido únicamente a la IP del administrador/VPN corporativa
 resource "aws_vpc_security_group_ingress_rule" "cp_k8s_api" {
   security_group_id = aws_security_group.k8s-sg-control-plane.id
-  description       = "Kubernetes API Server - Restringido a CIDR de administracion"
+  description       = "Kubernetes API Server - acceso externo (kubectl desde el PC)"
   from_port         = 6443
   to_port           = 6443
   ip_protocol       = "tcp"
-  cidr_ipv4         = "0.0.0.0/0" # ⚠️ Definir variable con tu IP /32 o VPN corporativa
-  tags              = { Name = "${var.env_prefix}-cp-k8s-api" }
+  # Abierto a propósito: laboratorio con nodos temporales y acceso desde una
+  # conexión doméstica con IP dinámica. La API exige certificado de cliente.
+  # En un entorno permanente, restringir a la IP/VPN de administración (/32).
+  cidr_ipv4 = "0.0.0.0/0"
+  tags      = { Name = "${var.env_prefix}-cp-k8s-api" }
 }
 
 # Permitir que los Workers llamen al API Server
