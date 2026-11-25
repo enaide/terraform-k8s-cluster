@@ -5,9 +5,9 @@ variable "cp_instance_type" {
 }
 
 variable "worker_instance_type" {
-  description = "Tipo EC2 de los workers (mín. 2 GB RAM)"
+  description = "Tipo EC2 de los workers (4 GB: necesario para MongoDB x3 + ingress + EBS CSI; ver docs/lab-k8s-mongodb-helm.md)"
   type        = string
-  default     = "t3.small"
+  default     = "c7i-flex.large"
 }
 
 variable "root_volume_size" {

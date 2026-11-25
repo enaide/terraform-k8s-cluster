@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# mongo-express — valores personalizados
+#
+# Chart:    mongo-express  (repo https://cowboysysop.github.io/charts/)
+# Versión:  7.0.0  (imagen mongo-express:1.0.2)  — fijada
+# Instalar (las contraseñas se pasan con --set, nunca en este archivo):
+#   helm upgrade --install mongo-express cowboysysop/mongo-express \
+#     --kube-context dev-k8s --namespace lab --version 7.0.0 \
+#     -f k8s/mongo-express/custom-values.yaml \
+#     --set mongodbAdminPassword="$MONGODB_ROOT_PASSWORD" \
+#     --set basicAuthPassword="$ME_WEB_PASSWORD"
+#
+# ⚠️ mongo-express está descontinuado: solo para pruebas.
+# Acceso: http://mongo-express.lab.local:30080 (IP de un worker en /etc/hosts).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Los 3 miembros del replica set (Service headless "mongodb-headless").
+# El chart arma: mongodb://root:<pass>@<mongodbServer>:<mongodbPort>/
+mongodbServer: "mongodb-0.mongodb-headless.lab.svc.cluster.local,mongodb-1.mongodb-headless.lab.svc.cluster.local,mongodb-2.mongodb-headless.lab.svc.cluster.local"
+mongodbPort: 27017
+
+# Conexión como root (la contraseña llega con --set mongodbAdminPassword).
+mongodbEnableAdmin: true
+mongodbAdminUsername: root
+
+# Login de la interfaz web (la contraseña llega con --set basicAuthPassword).
+# Imprescindible: el rango NodePort está abierto a internet.
+basicAuthUsername: admin
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  pathType: Prefix
+  hosts:
+    - host: mongo-express.lab.local
+      paths:
+        - /
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi

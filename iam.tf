@@ -103,6 +103,16 @@ resource "aws_iam_role_policy_attachment" "worker_ssm_core" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# AWS EBS CSI driver (k8s/aws-ebs-csi-driver): su controlador crea, adjunta y
+# borra los discos EBS de los PVC. Corre solo en los workers (no tolera el
+# taint del control plane), por eso la política va solo en este rol.
+# La V2 solo gestiona volúmenes etiquetados ebs.csi.aws.com/cluster=true
+# (o kubernetes.io/created-for/pvc/name): no puede borrar los discos raíz.
+resource "aws_iam_role_policy_attachment" "worker_ebs_csi" {
+  role       = aws_iam_role.worker.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEBSCSIDriverPolicyV2"
+}
+
 data "aws_iam_policy_document" "worker" {
   # 06-kubeadm-join.sh → aws ssm get-parameter (solo lectura)
   # El SecureString usa la clave aws/ssm: no hace falta permiso KMS explícito.

@@ -1,0 +1,77 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# MongoDB (Bitnami) — valores personalizados
+#
+# Chart:    oci://registry-1.docker.io/bitnamicharts/mongodb
+# Versión:  16.5.45  — fijada A PROPÓSITO (ver "Imágenes" abajo)
+# Instalar:
+#   helm upgrade --install mongodb oci://registry-1.docker.io/bitnamicharts/mongodb \
+#     --kube-context dev-k8s --namespace lab --create-namespace \
+#     --version 16.5.45 -f k8s/mongodb/custom-values.yaml
+#
+# Contraseñas: NO van aquí. El chart genera la de root y la guarda en el
+# Secret "mongodb" (clave mongodb-root-password).
+#
+# Imágenes: desde ago-2025 Bitnami solo publica gratis en "bitnamilegacy"
+# (congeladas, SIN parches de seguridad: solo laboratorio). La 16.5.45 es la
+# última versión del chart cuyas imágenes de serie (8.0.13-debian-12-r0, ...)
+# existen en bitnamilegacy. Con todas las imágenes en bitnamilegacy el chart
+# solo muestra un WARNING; no hace falta global.security.allowInsecureImages.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Replica set (StatefulSet) de 3 miembros con datos, sin árbitro.
+architecture: replicaset
+replicaCount: 3
+arbiter:
+  enabled: false
+
+# Recursos por réplica (sustituyen al resourcesPreset "small" de serie).
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Un disco EBS gp3 de 1 GiB por réplica (StorageClass del EBS CSI driver).
+persistence:
+  storageClass: gp3
+  size: 1Gi
+
+# ── Imágenes: todas en bitnamilegacy, con las etiquetas de serie del 16.5.45 ──
+image:
+  registry: docker.io
+  repository: bitnamilegacy/mongodb
+  tag: 8.0.13-debian-12-r0
+
+tls:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/nginx
+    tag: 1.29.1-debian-12-r0
+
+externalAccess:
+  # De serie ya es false; se deja explícito: MongoDB nunca se expone fuera.
+  enabled: false
+  autoDiscovery:
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/kubectl
+      tag: 1.33.4-debian-12-r0
+  dnsCheck:
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/os-shell
+      tag: 12-debian-12-r51
+
+volumePermissions:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/os-shell
+    tag: 12-debian-12-r51
+
+metrics:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/mongodb-exporter
+    tag: 0.47.0-debian-12-r1

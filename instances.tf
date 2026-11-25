@@ -42,6 +42,14 @@ resource "aws_instance" "control_plane" {
     delete_on_termination = true
   }
 
+  # IMDSv2 obligatorio y salto 2: los pods (p. ej. el EBS CSI driver) están a
+  # un salto de red de la instancia y necesitan llegar al servicio de metadatos.
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
   user_data = templatefile("${path.module}/scripts/bootstrap.sh.tpl", {
     bucket    = aws_s3_bucket.k8s-scripts.id
     region    = var.aws_region
@@ -93,6 +101,14 @@ resource "aws_instance" "worker" {
     delete_on_termination = true
   }
 
+  # IMDSv2 obligatorio y salto 2: los pods (p. ej. el EBS CSI driver) están a
+  # un salto de red de la instancia y necesitan llegar al servicio de metadatos.
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
+  }
+
   user_data = templatefile("${path.module}/scripts/bootstrap.sh.tpl", {
     bucket    = aws_s3_bucket.k8s-scripts.id
     region    = var.aws_region
@@ -106,6 +122,7 @@ resource "aws_instance" "worker" {
     # Permisos IAM efectivos ANTES de que arranque el bootstrap (aws s3 cp / ssm)
     aws_iam_role_policy.worker,
     aws_iam_role_policy_attachment.worker_ssm_core,
+    aws_iam_role_policy_attachment.worker_ebs_csi,
     aws_s3_object.script_01_swap,
     aws_s3_object.script_02_modules,
     aws_s3_object.script_03_sysctl,
