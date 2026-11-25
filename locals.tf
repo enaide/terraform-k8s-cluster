@@ -18,9 +18,13 @@ locals {
     aws_region       = var.aws_region
   })
 
+  # cp_private_ip: el worker solo acepta un join-command que apunte a ESTE
+  # control plane (evita usar el de un clúster anterior guardado en SSM).
+  # Sin ciclo: el control plane no depende de este script; los workers sí.
   script_06_worker = templatefile("${path.module}/scripts/worker/06-kubeadm-join.sh", {
-    env_prefix = var.env_prefix
-    aws_region = var.aws_region
+    env_prefix    = var.env_prefix
+    aws_region    = var.aws_region
+    cp_private_ip = aws_instance.control_plane.private_ip
   })
 
   # ── Validación del clúster (consumido en wait.tf) ───────────────────────────

@@ -173,7 +173,11 @@ resource "aws_vpc_security_group_ingress_rule" "calico_vxlan_worker_self" {
   tags                         = { Name = "${var.env_prefix}-worker-to-worker-vxlan" }
 }
 
-# Calico Typha (Solo si usas Typha para escalar +50 nodos)
+# Calico Typha (TCP 5473): reparte las reglas de red a calico-node.
+# El operador Tigera SIEMPRE lo despliega (aquí con 2 réplicas) y una puede
+# caer en un worker, así que debe ser alcanzable en todos los nodos.
+
+# Typha en el control plane ← calico-node de los workers
 resource "aws_vpc_security_group_ingress_rule" "calico_typha" {
   security_group_id            = aws_security_group.k8s-sg-control-plane.id
   referenced_security_group_id = aws_security_group.k8s-sg-worker.id
@@ -182,6 +186,28 @@ resource "aws_vpc_security_group_ingress_rule" "calico_typha" {
   to_port                      = 5473
   ip_protocol                  = "tcp"
   tags                         = { Name = "${var.env_prefix}-cp-calico-typha" }
+}
+
+# Typha en un worker ← calico-node del control plane
+resource "aws_vpc_security_group_ingress_rule" "calico_typha_worker_from_cp" {
+  security_group_id            = aws_security_group.k8s-sg-worker.id
+  referenced_security_group_id = aws_security_group.k8s-sg-control-plane.id
+  description                  = "Calico Typha desde el control plane"
+  from_port                    = 5473
+  to_port                      = 5473
+  ip_protocol                  = "tcp"
+  tags                         = { Name = "${var.env_prefix}-worker-calico-typha-from-cp" }
+}
+
+# Typha en un worker ← calico-node del otro worker
+resource "aws_vpc_security_group_ingress_rule" "calico_typha_worker_self" {
+  security_group_id            = aws_security_group.k8s-sg-worker.id
+  referenced_security_group_id = aws_security_group.k8s-sg-worker.id
+  description                  = "Calico Typha entre workers"
+  from_port                    = 5473
+  to_port                      = 5473
+  ip_protocol                  = "tcp"
+  tags                         = { Name = "${var.env_prefix}-worker-calico-typha-self" }
 }
 
 # BGP entre control plane y workers (TCP 179)

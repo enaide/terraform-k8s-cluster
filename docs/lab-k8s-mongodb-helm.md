@@ -114,7 +114,7 @@ terraform plan -out=tfplan
 ```
 | Esperado | Si no |
 |---|---|
-| `Plan: 54 to add, 0 to change, 0 to destroy.` (53 de siempre + la política) e `instance_type = "c7i-flex.large"` ×3 | `change`/`destroy` → quedaba estado previo (runbook, Fase 0.2) |
+| `Plan: 56 to add, 0 to change, 0 to destroy.` (53 de base + la política del EBS CSI + 2 reglas de Typha) e `instance_type = "c7i-flex.large"` ×3 | `change`/`destroy` → quedaba estado previo (runbook, Fase 0.2) |
 
 **1.2 · Aplicar y conectar kubectl**
 ```bash
@@ -125,7 +125,7 @@ source scripts/setup-kubeconfig.sh
 ```
 | Esperado |
 |---|
-| `Apply complete! Resources: 54 added` y `✅ CLÚSTER LISTO` |
+| `Apply complete! Resources: 56 added` y `✅ CLÚSTER LISTO` |
 | 3 nodos `Ready` y contexto `* dev-k8s` |
 
 **1.3 · Comprobar IMDS** (opcional)
@@ -542,7 +542,7 @@ terraform destroy
 ```
 | Esperado |
 |---|
-| `Destroy complete! Resources: 54 destroyed.` |
+| `Destroy complete! Resources: 56 destroyed.` |
 
 **8.3 · Barrido final**
 ```bash
