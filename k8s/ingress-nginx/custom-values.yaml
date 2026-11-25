@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ingress-nginx — valores personalizados
+#
+# Chart:    ingress-nginx  (repo https://kubernetes.github.io/ingress-nginx)
+# Versión:  4.15.1  (controlador v1.15.1)  — fijada
+# Instalar:
+#   helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+#     --kube-context dev-k8s --namespace ingress-nginx --create-namespace \
+#     --version 4.15.1 -f k8s/ingress-nginx/custom-values.yaml
+#
+# ⚠️ Proyecto retirado en marzo de 2026: sin más parches. Solo laboratorio.
+#
+# Cómo se expone (sin balanceador de AWS: el clúster no tiene cloud provider):
+#   Internet → SG worker_nodeport (TCP 30000-32767, solo workers)
+#            → NodePort 30080/30443 en CUALQUIER worker
+#            → pod del controlador → regla Ingress → Service de la app
+# ─────────────────────────────────────────────────────────────────────────────
+
+controller:
+  replicaCount: 1
+
+  service:
+    # NodePort, no LoadBalancer: un LoadBalancer se quedaría en <pending>.
+    type: NodePort
+    # Puertos fijos (dentro del rango que abre la regla worker_nodeport) para
+    # no tener que buscarlos en cada despliegue.
+    nodePorts:
+      http: 30080
+      https: 30443
+    # Cluster: cualquier worker acepta la petición y kube-proxy la reenvía al
+    # pod del controlador aunque esté en el otro worker.
+    externalTrafficPolicy: Cluster
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 90Mi
+    limits:
+      memory: 256Mi

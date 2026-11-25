@@ -2,3 +2,7 @@
 *.tfstate
 *.tfstate.*
 *.tfvars
+RUNBOOK-k8s-lab.md
+# Planes de Terraform guardados (pueden contener valores sensibles)
+tfplan
+*.tfplan

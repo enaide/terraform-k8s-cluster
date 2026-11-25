@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AWS EBS CSI driver — valores personalizados
+#
+# Chart:    aws-ebs-csi-driver  (repo https://kubernetes-sigs.github.io/aws-ebs-csi-driver)
+# Versión:  2.68.1  (app 1.68.1)  — fijada, no cambiar sin revisar este archivo
+# Instalar:
+#   helm upgrade --install aws-ebs-csi-driver aws-ebs-csi-driver/aws-ebs-csi-driver \
+#     --kube-context dev-k8s --namespace kube-system --version 2.68.1 \
+#     -f k8s/aws-ebs-csi-driver/custom-values.yaml
+#
+# Por qué hace falta: el clúster es kubeadm sobre EC2 (sin cloud provider de
+# AWS). Sin este driver, Kubernetes no puede crear discos EBS para los PVC.
+# Permisos: política AmazonEBSCSIDriverPolicyV2 en el rol de los workers (iam.tf).
+# Ver docs/lab-k8s-mongodb-helm.md
+# ─────────────────────────────────────────────────────────────────────────────
+
+controller:
+  # Región fija (por defecto la lee del servicio de metadatos de la instancia).
+  region: eu-south-2
+
+  # Una réplica basta en el laboratorio (por defecto 2): menos memoria.
+  replicaCount: 1
+
+  # Etiquetas propias en CADA disco que cree el driver. scripts/k8s-teardown.sh
+  # las usa para encontrar y borrar discos huérfanos que Terraform no conoce.
+  # Los discos raíz de Terraform no llevan estas etiquetas.
+  extraVolumeTags:
+    Project: dev-k8s
+    ManagedBy: aws-ebs-csi-driver
+
+# StorageClass creada por el propio chart (no hace falta manifiesto aparte).
+storageClasses:
+  - name: gp3
+    annotations:
+      # Clase por defecto: un PVC sin storageClassName usa gp3.
+      storageclass.kubernetes.io/is-default-class: "true"
+    # El disco se crea cuando el pod se programa, en la AZ de su nodo.
+    volumeBindingMode: WaitForFirstConsumer
+    # Al borrar el PVC se borra el disco en AWS (sin discos huérfanos).
+    reclaimPolicy: Delete
+    allowVolumeExpansion: true
+    parameters:
+      type: gp3
+      encrypted: "true"
