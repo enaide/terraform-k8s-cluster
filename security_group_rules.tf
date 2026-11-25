@@ -17,6 +17,15 @@ resource "aws_vpc_security_group_egress_rule" "worker_outbound" {
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
+# CÓMO LEER UNA REGLA DE ENTRADA (ingress)
+#   security_group_id                    → DESTINO: el SG que recibe la llamada
+#   referenced_security_group_id / cidr  → ORIGEN: quién puede llamar
+#                                          (un SG solo vale por IP privada)
+#   La respuesta vuelve sola (los SG son stateful): basta la regla de quien inicia.
+# En una regla de salida (egress), referenced_security_group_id / cidr = DESTINO.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════════════════
 # CONTROL PLANE - REGLAS DE ENTRADA (INGRESS)
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -31,7 +40,7 @@ resource "aws_vpc_security_group_ingress_rule" "cp_ssh" {
 }
 
 
-# Acceso al API Server: Restringido únicamente a la IP del administrador/VPN corporativa
+# Acceso al API Server desde fuera (kubectl desde el PC). Ver la nota de abajo.
 resource "aws_vpc_security_group_ingress_rule" "cp_k8s_api" {
   security_group_id = aws_security_group.k8s-sg-control-plane.id
   description       = "Kubernetes API Server - acceso externo (kubectl desde el PC)"
@@ -95,7 +104,7 @@ resource "aws_vpc_security_group_ingress_rule" "worker_ssh" {
 # NodePorts para exposición de aplicaciones
 resource "aws_vpc_security_group_ingress_rule" "worker_nodeport" {
   security_group_id = aws_security_group.k8s-sg-worker.id
-  description       = "NodePort Services - Acceso a aplicaciones desdel el Load Balancer / Exterior"
+  description       = "NodePort Services - acceso a aplicaciones desde Internet (ingress-nginx 30080/30443)"
   from_port         = 30000
   to_port           = 32767
   ip_protocol       = "tcp"
@@ -133,7 +142,7 @@ resource "aws_vpc_security_group_ingress_rule" "worker_kube_proxy" {
 resource "aws_vpc_security_group_ingress_rule" "calico_vxlan_cp" {
   security_group_id            = aws_security_group.k8s-sg-control-plane.id
   referenced_security_group_id = aws_security_group.k8s-sg-worker.id
-  description                  = "Calico VXLAN overlay desde workers y cp"
+  description                  = "Calico VXLAN overlay desde los workers"
   from_port                    = 4789
   to_port                      = 4789
   ip_protocol                  = "udp"
@@ -143,7 +152,7 @@ resource "aws_vpc_security_group_ingress_rule" "calico_vxlan_cp" {
 resource "aws_vpc_security_group_ingress_rule" "calico_vxlan_worker" {
   security_group_id            = aws_security_group.k8s-sg-worker.id
   referenced_security_group_id = aws_security_group.k8s-sg-control-plane.id
-  description                  = "Calico VXLAN overlay desde cp y workers"
+  description                  = "Calico VXLAN overlay desde el control plane"
   from_port                    = 4789
   to_port                      = 4789
   ip_protocol                  = "udp"
@@ -217,7 +226,8 @@ resource "aws_vpc_security_group_ingress_rule" "cp_bgp_from_workers" {
   ip_protocol                  = "tcp"
   from_port                    = 179
   to_port                      = 179
-  description                  = "BGP from workers"
+  description                  = "BGP desde los workers"
+  tags                         = { Name = "${var.env_prefix}-cp-bgp-from-workers" }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "cp_bgp_self" {
@@ -226,7 +236,8 @@ resource "aws_vpc_security_group_ingress_rule" "cp_bgp_self" {
   ip_protocol                  = "tcp"
   from_port                    = 179
   to_port                      = 179
-  description                  = "BGP self (control plane)"
+  description                  = "BGP entre nodos del control plane"
+  tags                         = { Name = "${var.env_prefix}-cp-bgp-self" }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "worker_bgp_from_cp" {
@@ -235,7 +246,8 @@ resource "aws_vpc_security_group_ingress_rule" "worker_bgp_from_cp" {
   ip_protocol                  = "tcp"
   from_port                    = 179
   to_port                      = 179
-  description                  = "BGP from control plane"
+  description                  = "BGP desde el control plane"
+  tags                         = { Name = "${var.env_prefix}-worker-bgp-from-cp" }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "worker_bgp_self" {
@@ -244,5 +256,6 @@ resource "aws_vpc_security_group_ingress_rule" "worker_bgp_self" {
   ip_protocol                  = "tcp"
   from_port                    = 179
   to_port                      = 179
-  description                  = "BGP between workers"
+  description                  = "BGP entre workers"
+  tags                         = { Name = "${var.env_prefix}-worker-bgp-self" }
 }
